@@ -122,8 +122,6 @@ public class LuceneUtils
 				try
 				{
 					writer.addDocument(createDocument(b.getISBN(), b.getTitle()));
-					writer.commit();
-					writer.close();
 				}
 				catch(IOException e)
 				{
@@ -131,6 +129,9 @@ public class LuceneUtils
 					e.printStackTrace();
 				}
 			});
+			
+			writer.commit();
+			writer.close();
 		}
 		catch(Exception e)
 		{

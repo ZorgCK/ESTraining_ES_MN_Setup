@@ -22,7 +22,9 @@ public class DAOBookLazy extends ReadWriteLocked
 {
 	public final RootProvider<Root>	rootProvider;
 	private final StorageManager	manager;
-	private final LuceneUtils luceneUtils;
+	private final LuceneUtils		luceneUtils;
+	private int						indexUpdateCounter	= 0;
+	private List<Book>				toIndex				= new ArrayList<Book>();
 	
 	DAOBookLazy(final RootProvider<Root> rootProvider, final StorageManager manager, final LuceneUtils luceneUtils)
 	{
@@ -50,9 +52,16 @@ public class DAOBookLazy extends ReadWriteLocked
 			computeIfAbsent.get().add(book);
 			manager.store(computeIfAbsent.get());
 			
-			ArrayList<Book> indexList = new ArrayList<Book>();
-			indexList.add(book);
-			luceneUtils.updateIndex(indexList);
+			toIndex.add(book);
+			if(toIndex.size() > 10000)
+			{
+				luceneUtils.updateIndex(toIndex);
+				toIndex.clear();
+			}
+			
+//			ArrayList<Book> indexList = new ArrayList<Book>();
+//			indexList.add(book);
+//			luceneUtils.updateIndex(indexList);
 		});
 		return book;
 	}
@@ -73,15 +82,11 @@ public class DAOBookLazy extends ReadWriteLocked
 		List<String> searchByTitle = luceneUtils.searchByTitle(search);
 		List<String> index = searchByTitle.stream().map(t -> t.substring(0, 3)).collect(Collectors.toList());
 		
-		List<Book> collect = rootProvider.root().getBooks().getBooksByISBN().entrySet()
-            .stream()
-            .filter(ent -> index.contains(ent.getKey()))
-            .flatMap(m -> m.getValue().get().stream())
-            .collect(Collectors.toList());
+		List<Book> collect = rootProvider.root().getBooks().getBooksByISBN().entrySet().stream().filter(
+			ent -> index.contains(ent.getKey())).flatMap(m -> m.getValue().get().stream()).collect(Collectors.toList());
 		
-		List<Book> collect2 = collect.stream()
-			.filter(b -> searchByTitle.contains(b.getISBN()))
-			.collect(Collectors.toList());
+		List<Book> collect2 =
+			collect.stream().filter(b -> searchByTitle.contains(b.getISBN())).collect(Collectors.toList());
 		
 		return collect2;
 	}
